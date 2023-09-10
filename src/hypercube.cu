@@ -37,7 +37,7 @@ testResult_t HyperCubeInitData(struct threadArgs* args, ncclDataType_t type, ncc
   return testSuccess;
 }
 
-void HyperCubeGetBw(size_t count, int typesize, double sec, double* algBw, double* busBw, int nranks) {
+void HyperCubeGetBw(size_t count, int typesize, double sec, double* algBw, double* busBw, int nranks, int nGpusPerNode) {
   double baseBw = (double)(count * typesize * (nranks - 1)) / 1.0E9 / sec;
 
   *algBw = baseBw;
@@ -45,7 +45,7 @@ void HyperCubeGetBw(size_t count, int typesize, double sec, double* algBw, doubl
   *busBw = baseBw * factor;
 }
 
-testResult_t HyperCubeRunColl(void* sendbuff, void* recvbuff, size_t count, ncclDataType_t type, ncclRedOp_t op, int root, ncclComm_t comm, cudaStream_t stream) {
+testResult_t HyperCubeRunColl(void* sendbuff, void* recvbuff, size_t count, ncclDataType_t type, ncclRedOp_t op, int root, int nGpusPerNode, ncclComm_t comm, cudaStream_t stream) {
   char* sbuff = (char*)sendbuff;
   char* rbuff = (char*)recvbuff;
   int nRanks;

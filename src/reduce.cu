@@ -33,13 +33,13 @@ testResult_t ReduceInitData(struct threadArgs* args, ncclDataType_t type, ncclRe
   return testSuccess;
 }
 
-void ReduceGetBw(size_t count, int typesize, double sec, double* algBw, double* busBw, int nranks) {
+void ReduceGetBw(size_t count, int typesize, double sec, double* algBw, double* busBw, int nranks, int nGpusPerNode) {
   double baseBw = (double)(count * typesize) / 1.0E9 / sec;
   *algBw = baseBw;
   *busBw = baseBw;
 }
 
-testResult_t ReduceRunColl(void* sendbuff, void* recvbuff, size_t count, ncclDataType_t type, ncclRedOp_t op, int root, ncclComm_t comm, cudaStream_t stream) {
+testResult_t ReduceRunColl(void* sendbuff, void* recvbuff, size_t count, ncclDataType_t type, ncclRedOp_t op, int root, int nGpusPerNode, ncclComm_t comm, cudaStream_t stream) {
   NCCLCHECK(ncclReduce(sendbuff, recvbuff, count, type, op, root, comm, stream));
   return testSuccess;
 }

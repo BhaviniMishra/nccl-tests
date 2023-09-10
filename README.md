@@ -45,6 +45,7 @@ All tests support the same set of arguments :
 * Number of GPUs
   * `-t,--nthreads <num threads>` number of threads per process. Default : 1.
   * `-g,--ngpus <GPUs per thread>` number of gpus per thread. Default : 1.
+  * `-P,--ngpus_per_node <GPUs per node>` number of gpus per node. Default : 1.
 * Sizes to scan
   * `-b,--minbytes <min size in bytes>` minimum size to start with. Default : 32M.
   * `-e,--maxbytes <max size in bytes>` maximum size to end at. Default : 32M.

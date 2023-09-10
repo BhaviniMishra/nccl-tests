@@ -61,6 +61,7 @@ thread_local int is_main_thread = 0;
 // Command line parameter defaults
 static int nThreads = 1;
 static int nGpus = 1;
+static int nGpusPerNode = 1;
 static size_t minBytes = 32*1024*1024;
 static size_t maxBytes = 32*1024*1024;
 static size_t stepBytes = 1*1024*1024;
@@ -377,7 +378,7 @@ testResult_t startColl(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t
     TESTCHECK(args->collTest->runColl(
           (void*)(in_place ? recvBuff + args->sendInplaceOffset*rank : sendBuff),
           (void*)(in_place ? recvBuff + args->recvInplaceOffset*rank : recvBuff),
-        count, type, op, root, args->comms[i], args->streams[i]));
+        count, type, op, root, args->nGpusPerNode, args->comms[i], args->streams[i]));
 
     #if NCCL_VERSION_CODE >= NCCL_VERSION(2,11,0)
     if(opIndex >= ncclNumOps) {
@@ -480,7 +481,7 @@ testResult_t BenchTime(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t
 #endif
 
   double algBw, busBw;
-  args->collTest->getBw(count, wordSize(type), deltaSec, &algBw, &busBw, args->nProcs*args->nThreads*args->nGpus);
+  args->collTest->getBw(count, wordSize(type), deltaSec, &algBw, &busBw, args->nProcs*args->nThreads*args->nGpus, args->nGpusPerNode);
 
   Barrier(args);
 
@@ -687,6 +688,7 @@ int main(int argc, char* argv[]) {
   static struct option longopts[] = {
     {"nthreads", required_argument, 0, 't'},
     {"ngpus", required_argument, 0, 'g'},
+    {"ngpus_per_node", required_argument, 0, 'P'},
     {"minbytes", required_argument, 0, 'b'},
     {"maxbytes", required_argument, 0, 'e'},
     {"stepbytes", required_argument, 0, 'i'},
@@ -711,7 +713,7 @@ int main(int argc, char* argv[]) {
 
   while(1) {
     int c;
-    c = getopt_long(argc, argv, "t:g:b:e:i:f:n:m:w:p:c:o:d:r:z:y:T:hG:C:a:", longopts, &longindex);
+    c = getopt_long(argc, argv, "t:g:P:b:e:i:f:n:m:w:p:c:o:d:r:z:y:T:hG:C:a:", longopts, &longindex);
 
     if (c == -1)
       break;
@@ -723,6 +725,8 @@ int main(int argc, char* argv[]) {
       case 'g':
         nGpus = strtol(optarg, NULL, 0);
         break;
+      case 'P':
+	      nGpusPerNode = strtol(optarg, NULL, 0);
       case 'b':
         parsed = parsesize(optarg);
         if (parsed < 0) {
@@ -801,6 +805,7 @@ int main(int argc, char* argv[]) {
         printf("USAGE: %s \n\t"
             "[-t,--nthreads <num threads>] \n\t"
             "[-g,--ngpus <gpus per thread>] \n\t"
+            "[-P,--ngpus_per_node <number of gpus per node>] \n\t"
             "[-b,--minbytes <min size in bytes>] \n\t"
             "[-e,--maxbytes <max size in bytes>] \n\t"
             "[-i,--stepbytes <increment size>] \n\t"
@@ -870,8 +875,8 @@ testResult_t run() {
 #endif
   is_main_thread = is_main_proc = (proc == 0) ? 1 : 0;
 
-  PRINT("# nThread %d nGpus %d minBytes %ld maxBytes %ld step: %ld(%s) warmup iters: %d iters: %d agg iters: %d validation: %d graph: %d\n",
-        nThreads, nGpus, minBytes, maxBytes,
+  PRINT("# nThread %d nGpus %d nGpusPerNode %d minBytes %ld maxBytes %ld step: %ld(%s) warmup iters: %d iters: %d agg iters: %d validation: %d graph: %d\n",
+        nThreads, nGpus, nGpusPerNode, minBytes, maxBytes,
         (stepFactor > 1)?stepFactor:stepBytes, (stepFactor > 1)?"factor":"bytes",
         warmup_iters, iters, agg_iters, datacheck, cudaGraphLaunches);
   if (blocking_coll) PRINT("# Blocking Enabled: wait for completion and barrier after each collective \n");
@@ -995,6 +1000,7 @@ testResult_t run() {
     threads[t].args.nThreads=nThreads;
     threads[t].args.thread=t;
     threads[t].args.nGpus=nGpus;
+    threads[t].args.nGpusPerNode=nGpusPerNode;
     threads[t].args.gpus=gpus+t*nGpus;
     threads[t].args.sendbuffs = sendbuffs+t*nGpus;
     threads[t].args.recvbuffs = recvbuffs+t*nGpus;

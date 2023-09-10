@@ -7,7 +7,7 @@
 #include "cuda_runtime.h"
 #include "common.h"
 
-void SendRecvGetCollByteCount(size_t *sendcount, size_t *recvcount, size_t *paramcount, size_t *sendInplaceOffset, size_t *recvInplaceOffset, size_t count, int nranks) {
+void PipelineGetCollByteCount(size_t *sendcount, size_t *recvcount, size_t *paramcount, size_t *sendInplaceOffset, size_t *recvInplaceOffset, size_t count, int nranks) {
   *sendcount = count;
   *recvcount = count;
   *sendInplaceOffset = 0;
@@ -15,7 +15,7 @@ void SendRecvGetCollByteCount(size_t *sendcount, size_t *recvcount, size_t *para
   *paramcount = *sendcount;
 }
 
-testResult_t SendRecvInitData(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t op, int root, int rep, int in_place) {
+testResult_t PipelineInitData(struct threadArgs* args, ncclDataType_t type, ncclRedOp_t op, int root, int rep, int in_place) {
   size_t sendcount = args->sendBytes / wordSize(type);
   size_t recvcount = args->expectedBytes / wordSize(type);
   int nranks = args->nProcs*args->nThreads*args->nGpus;
@@ -26,30 +26,30 @@ testResult_t SendRecvInitData(struct threadArgs* args, ncclDataType_t type, nccl
     CUDACHECK(cudaMemset(args->recvbuffs[i], 0, args->expectedBytes));
     void* data = in_place ? args->recvbuffs[i] : args->sendbuffs[i];
     TESTCHECK(InitData(data, sendcount, rank*sendcount, type, ncclSum, rep, 1, 0));
-    int peer = (rank-1+nranks)%nranks;
+    int peer = (rank-args->nGpusPerNode+nranks)%nranks;
     TESTCHECK(InitData(args->expected[i], recvcount, peer*recvcount, type, ncclSum, rep, 1, 0));
     CUDACHECK(cudaDeviceSynchronize());
   }
-  // We don't support in-place sendrecv
+  // We don't support in-place pipeline
   args->reportErrors = in_place ? 0 : 1;
   return testSuccess;
 }
 
-void SendRecvGetBw(size_t count, int typesize, double sec, double* algBw, double* busBw, int nranks, int nGpusPerNode) {
-  double baseBw = (double)(count * typesize) / 1.0E9 / sec;
+void PipelineGetBw(size_t count, int typesize, double sec, double* algBw, double* busBw, int nranks, int nGpusPerNode) {
+  double baseBw = (double)(count * typesize * nGpusPerNode) / 1.0E9 / sec;
 
   *algBw = baseBw;
   double factor = 1;
   *busBw = baseBw * factor;
 }
 
-testResult_t SendRecvRunColl(void* sendbuff, void* recvbuff, size_t count, ncclDataType_t type, ncclRedOp_t op, int root, int nGpusPerNode, ncclComm_t comm, cudaStream_t stream) {
+testResult_t PipelineRunColl(void* sendbuff, void* recvbuff, size_t count, ncclDataType_t type, ncclRedOp_t op, int root, int nGpusPerNode, ncclComm_t comm, cudaStream_t stream) {
   int nRanks;
   NCCLCHECK(ncclCommCount(comm, &nRanks));
   int rank;
   NCCLCHECK(ncclCommUserRank(comm, &rank));
-  int recvPeer = (rank-1+nRanks) % nRanks;
-  int sendPeer = (rank+1) % nRanks;
+  int recvPeer = (rank-nGpusPerNode+nRanks) % nRanks;
+  int sendPeer = (rank+nGpusPerNode) % nRanks;
 
   NCCLCHECK(ncclGroupStart());
   NCCLCHECK(ncclSend(sendbuff, count, type, sendPeer, comm, stream));
@@ -58,21 +58,21 @@ testResult_t SendRecvRunColl(void* sendbuff, void* recvbuff, size_t count, ncclD
   return testSuccess;
 }
 
-struct testColl sendRecvTest = {
-  "SendRecv",
-  SendRecvGetCollByteCount,
-  SendRecvInitData,
-  SendRecvGetBw,
-  SendRecvRunColl
+struct testColl pipelineTest = {
+  "Pipeline",
+  PipelineGetCollByteCount,
+  PipelineInitData,
+  PipelineGetBw,
+  PipelineRunColl
 };
 
-void SendRecvGetBuffSize(size_t *sendcount, size_t *recvcount, size_t count, int nranks) {
+void PipelineGetBuffSize(size_t *sendcount, size_t *recvcount, size_t count, int nranks) {
   size_t paramcount, sendInplaceOffset, recvInplaceOffset;
-  SendRecvGetCollByteCount(sendcount, recvcount, &paramcount, &sendInplaceOffset, &recvInplaceOffset, count, nranks);
+  PipelineGetCollByteCount(sendcount, recvcount, &paramcount, &sendInplaceOffset, &recvInplaceOffset, count, nranks);
 }
 
-testResult_t SendRecvRunTest(struct threadArgs* args, int root, ncclDataType_t type, const char* typeName, ncclRedOp_t op, const char* opName) {
-  args->collTest = &sendRecvTest;
+testResult_t PipelineRunTest(struct threadArgs* args, int root, ncclDataType_t type, const char* typeName, ncclRedOp_t op, const char* opName) {
+  args->collTest = &pipelineTest;
   ncclDataType_t *run_types;
   ncclRedOp_t *run_ops;
   const char **run_typenames, **run_opnames;
@@ -106,9 +106,9 @@ testResult_t SendRecvRunTest(struct threadArgs* args, int root, ncclDataType_t t
   return testSuccess;
 }
 
-struct testEngine sendRecvEngine = {
-  SendRecvGetBuffSize,
-  SendRecvRunTest
+struct testEngine pipelineEngine = {
+  PipelineGetBuffSize,
+  PipelineRunTest
 };
 
-#pragma weak ncclTestEngine=sendRecvEngine
+#pragma weak ncclTestEngine=pipelineEngine

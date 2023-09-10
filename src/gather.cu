@@ -35,7 +35,7 @@ testResult_t GatherInitData(struct threadArgs* args, ncclDataType_t type, ncclRe
   return testSuccess;
 }
 
-void GatherGetBw(size_t count, int typesize, double sec, double* algBw, double* busBw, int nranks) {
+void GatherGetBw(size_t count, int typesize, double sec, double* algBw, double* busBw, int nranks, int nGpusPerNode) {
   double baseBw = (double)(count * nranks * typesize) / 1.0E9 / sec;
 
   *algBw = baseBw;
@@ -43,7 +43,7 @@ void GatherGetBw(size_t count, int typesize, double sec, double* algBw, double* 
   *busBw = baseBw * factor;
 }
 
-testResult_t GatherRunColl(void* sendbuff, void* recvbuff, size_t count, ncclDataType_t type, ncclRedOp_t op, int root, ncclComm_t comm, cudaStream_t stream) {
+testResult_t GatherRunColl(void* sendbuff, void* recvbuff, size_t count, ncclDataType_t type, ncclRedOp_t op, int root, int nGpusPerNode, ncclComm_t comm, cudaStream_t stream) {
   int nRanks;
   NCCLCHECK(ncclCommCount(comm, &nRanks));
   int rank;

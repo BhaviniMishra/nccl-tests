@@ -31,7 +31,7 @@ testResult_t ScatterInitData(struct threadArgs* args, ncclDataType_t type, ncclR
   return testSuccess;
 }
 
-void ScatterGetBw(size_t count, int typesize, double sec, double* algBw, double* busBw, int nranks) {
+void ScatterGetBw(size_t count, int typesize, double sec, double* algBw, double* busBw, int nranks, int nGpusPerNode) {
   double baseBw = (double)(count * nranks * typesize) / 1.0E9 / sec;
 
   *algBw = baseBw;
@@ -39,7 +39,7 @@ void ScatterGetBw(size_t count, int typesize, double sec, double* algBw, double*
   *busBw = baseBw * factor;
 }
 
-testResult_t ScatterRunColl(void* sendbuff, void* recvbuff, size_t count, ncclDataType_t type, ncclRedOp_t op, int root, ncclComm_t comm, cudaStream_t stream) {
+testResult_t ScatterRunColl(void* sendbuff, void* recvbuff, size_t count, ncclDataType_t type, ncclRedOp_t op, int root, int nGpusPerNode, ncclComm_t comm, cudaStream_t stream) {
   int nRanks;
   NCCLCHECK(ncclCommCount(comm, &nRanks));
   int rank;

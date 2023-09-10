@@ -90,9 +90,9 @@ struct testColl {
       size_t count, int nranks);
   testResult_t (*initData)(struct threadArgs* args, ncclDataType_t type,
       ncclRedOp_t op, int root, int rep, int in_place);
-  void (*getBw)(size_t count, int typesize, double sec, double* algBw, double* busBw, int nranks);
+  void (*getBw)(size_t count, int typesize, double sec, double* algBw, double* busBw, int nranks, int nGpusPerNode);
   testResult_t (*runColl)(void* sendbuff, void* recvbuff, size_t count, ncclDataType_t type,
-      ncclRedOp_t op, int root, ncclComm_t comm, cudaStream_t stream);
+      ncclRedOp_t op, int root, int nGpusPerNode, ncclComm_t comm, cudaStream_t stream);
 };
 extern struct testColl allReduceTest;
 extern struct testColl allGatherTest;
@@ -122,6 +122,7 @@ struct threadArgs {
   int nThreads;
   int thread;
   int nGpus;
+  int nGpusPerNode;
   int* gpus;
   int localRank;
   void** sendbuffs;

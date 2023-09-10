@@ -31,7 +31,7 @@ testResult_t BroadcastInitData(struct threadArgs* args, ncclDataType_t type, ncc
   return testSuccess;
 }
 
-void BroadcastGetBw(size_t count, int typesize, double sec, double* algBw, double* busBw, int nranks) {
+void BroadcastGetBw(size_t count, int typesize, double sec, double* algBw, double* busBw, int nranks, int nGpusPerNode) {
   double baseBw = (double)(count * typesize) / 1.0E9 / sec;
 
   *algBw = baseBw;
@@ -39,7 +39,7 @@ void BroadcastGetBw(size_t count, int typesize, double sec, double* algBw, doubl
   *busBw = baseBw * factor;
 }
 
-testResult_t BroadcastRunColl(void* sendbuff, void* recvbuff, size_t count, ncclDataType_t type, ncclRedOp_t op, int root, ncclComm_t comm, cudaStream_t stream) {
+testResult_t BroadcastRunColl(void* sendbuff, void* recvbuff, size_t count, ncclDataType_t type, ncclRedOp_t op, int root, int nGpusPerNode, ncclComm_t comm, cudaStream_t stream) {
   int rank;
   NCCLCHECK(ncclCommUserRank(comm, &rank));
 #if NCCL_MAJOR >= 2 && NCCL_MINOR >= 2

@@ -32,7 +32,7 @@ testResult_t AllReduceInitData(struct threadArgs* args, ncclDataType_t type, ncc
   return testSuccess;
 }
 
-void AllReduceGetBw(size_t count, int typesize, double sec, double* algBw, double* busBw, int nranks) {
+void AllReduceGetBw(size_t count, int typesize, double sec, double* algBw, double* busBw, int nranks, int nGpusPerNode) {
   double baseBw = (double)(count * typesize) / 1.0E9 / sec;
 
   *algBw = baseBw;
@@ -40,7 +40,7 @@ void AllReduceGetBw(size_t count, int typesize, double sec, double* algBw, doubl
   *busBw = baseBw * factor;
 }
 
-testResult_t AllReduceRunColl(void* sendbuff, void* recvbuff, size_t count, ncclDataType_t type, ncclRedOp_t op, int root, ncclComm_t comm, cudaStream_t stream) {
+testResult_t AllReduceRunColl(void* sendbuff, void* recvbuff, size_t count, ncclDataType_t type, ncclRedOp_t op, int root, int nGpusPerNode, ncclComm_t comm, cudaStream_t stream) {
   NCCLCHECK(ncclAllReduce(sendbuff, recvbuff, count, type, op, comm, stream));
   return testSuccess;
 }
